@@ -30,9 +30,8 @@ GUIDE_URL = os.getenv("GUIDE_URL", "https://t.me/channel")
 def get_main_reply_keyboard():
     """메인 메뉴 리플라이 키보드를 생성합니다."""
     keyboard = [
-        [KeyboardButton("📝 가입하기"), KeyboardButton("🔑 접속하기")],
-        [KeyboardButton("👤 계정정보"), KeyboardButton("🔒 비밀번호 변경")],
-        [KeyboardButton("🤝 지인추천")],
+        [KeyboardButton("📝 1초 가입하기"), KeyboardButton("🔑 사이트 바로가기")],
+        [KeyboardButton("👤 계정정보 확인"), KeyboardButton("🔒 비밀번호 변경")],
         [KeyboardButton("📞 고객센터"), KeyboardButton("📘 이용가이드")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -48,7 +47,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(start_message, reply_markup=get_main_reply_keyboard())
 
 async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'📝 가입하기' 메시지에 응답합니다."""
+    """'📝 1초 가입하기' 메시지에 응답합니다."""
     user = update.effective_user
     if not user.username:
         await update.message.reply_text("회원가입을 위해 먼저 텔레그램 설정에서 사용자명(@아이디)을 만들어주세요.")
@@ -77,7 +76,7 @@ async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(signup_message, parse_mode='Markdown')
     except requests.exceptions.HTTPError as err:
         if err.response.status_code == 409:
-             await update.message.reply_text("이미 가입된 회원입니다. '접속하기' 메뉴를 이용해주세요.")
+             await update.message.reply_text("이미 가입된 회원입니다. '사이트 바로가기' 메뉴를 이용해주세요.")
         else:
              logger.error(f"HTTP Error: {err}")
              await update.message.reply_text("가입 처리 중 서버 오류가 발생했습니다.")
@@ -86,17 +85,15 @@ async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("서버에 연결할 수 없습니다.")
 
 async def enter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'🔑 접속하기' 메시지에 응답합니다."""
-    # 인라인 버튼은 특정 메시지에만 붙일 수 있으므로 여기서만 사용합니다.
+    """'🔑 사이트 바로가기' 메시지에 응답합니다."""
     keyboard = [[KeyboardButton("마켓 자동로그인", url=WEBSITE_LOGIN_URL)]]
     await update.message.reply_text(
         "아래 버튼을 눌러 사이트에 바로 입장하세요.",
-        # 여기서는 인라인 키보드를 사용합니다.
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
     )
 
 async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'👤 계정정보' 메시지에 응답합니다."""
+    """'👤 계정정보 확인' 메시지에 응답합니다."""
     user = update.effective_user
     account_info = (
         f"👤 **요청하신 회원정보입니다.**\n\n"
@@ -105,18 +102,6 @@ async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "비밀번호 관련 사항은 '비밀번호 변경' 메뉴를 이용해주세요."
     )
     await update.message.reply_text(account_info, parse_mode='Markdown')
-
-async def referral(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'🤝 지인추천' 메시지에 응답합니다."""
-    user = update.effective_user
-    bot = await context.bot.get_me()
-    referral_link = f"https://t.me/{bot.username}?start={user.id}"
-    message = (
-        f"🤝 **친구에게 봇을 추천하고 혜택을 받으세요!**\n\n"
-        f"아래의 개인 추천 링크를 복사하여 친구에게 전달하세요.\n\n"
-        f"`{referral_link}`"
-    )
-    await update.message.reply_text(message, parse_mode='Markdown')
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """'📞 고객센터' 메시지에 응답합니다."""
@@ -154,7 +139,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("비밀번호 변경을 취소했습니다.", reply_markup=get_main_reply_keyboard())
     return ConversationHandler.END
 
-
 # --- 6. 메인 함수 (봇 실행) ---
 def main() -> None:
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
@@ -169,10 +153,9 @@ def main() -> None:
     )
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.Regex('^📝 가입하기$'), signup))
-    application.add_handler(MessageHandler(filters.Regex('^🔑 접속하기$'), enter))
-    application.add_handler(MessageHandler(filters.Regex('^👤 계정정보$'), account))
-    application.add_handler(MessageHandler(filters.Regex('^🤝 지인추천$'), referral))
+    application.add_handler(MessageHandler(filters.Regex('^📝 1초 가입하기$'), signup))
+    application.add_handler(MessageHandler(filters.Regex('^🔑 사이트 바로가기$'), enter))
+    application.add_handler(MessageHandler(filters.Regex('^👤 계정정보 확인$'), account))
     application.add_handler(MessageHandler(filters.Regex('^📞 고객센터$'), contact))
     application.add_handler(MessageHandler(filters.Regex('^📘 이용가이드$'), guide))
     application.add_handler(conv_handler)
