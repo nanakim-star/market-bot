@@ -38,14 +38,6 @@ def get_main_reply_keyboard():
 
 # --- 4. 명령어 및 메시지 처리 함수들 ---
 
-# UptimeRobot을 위한 헬스 체크 함수
-async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """UptimeRobot이 접속할 때 'OK'라고 응답해주는 함수"""
-    # 이 함수는 실제로 아무 작업도 하지 않아도 됩니다.
-    # 텔레그램 라이브러리가 서버에 200 OK 응답을 보내주는 것만으로 충분합니다.
-    # 텔레그램 채팅방에 응답을 보낼 필요는 없습니다.
-    pass
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """/start 명령어: 환영 메시지와 함께 리플라이 키보드를 표시합니다."""
     start_message = (
@@ -159,10 +151,6 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-
-    # UptimeRobot이 봇이 살아있는지 확인할 수 있도록 /health_check 핸들러를 추가합니다.
-    # 이 핸들러는 다른 일반 핸들러보다 먼저 등록하는 것이 좋습니다.
-    application.add_handler(CommandHandler("health_check", health_check))
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.Regex('^📝 1초 가입하기$'), signup))
