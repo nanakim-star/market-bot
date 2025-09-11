@@ -28,6 +28,7 @@ CONTACT_URL = os.getenv("CONTACT_URL")
 GUIDE_URL = os.getenv("GUIDE_URL")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 MINI_APP_URL = os.getenv("MINI_APP_URL")
+EVENT_CHANNEL_URL = os.getenv("EVENT_CHANNEL_URL") # 이벤트 채널 URL을 위한 새 환경 변수
 
 # --- 2. 텔레그램 봇 어플리케이션 설정 ---
 application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
@@ -40,7 +41,7 @@ def get_main_reply_keyboard():
     """메인 메뉴 키보드를 생성합니다."""
     keyboard = [
         [KeyboardButton("📝 1초 회원가입"), KeyboardButton("🔑 사이트 바로가기")],
-        [KeyboardButton("👤 계정정보 확인"), KeyboardButton("🔒 비밀번호 변경")],
+        [KeyboardButton("👤 계정정보 확인"), KeyboardButton("🎉 이벤트안내")],
         [KeyboardButton("📞 고객센터"), KeyboardButton("📘 이용가이드")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -78,9 +79,19 @@ async def launch_and_return(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if update.message.web_app_data:
         await update.message.reply_text("메인 메뉴로 돌아왔습니다.", reply_markup=get_main_reply_keyboard())
 
+async def event_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """'🎉 이벤트안내' 버튼 클릭 시 이벤트 채널 링크를 보냅니다."""
+    if not EVENT_CHANNEL_URL:
+        await update.message.reply_text("현재 진행중인 이벤트가 없습니다.")
+        return
+    keyboard = [[InlineKeyboardButton("이벤트 보러가기", url=EVENT_CHANNEL_URL)]]
+    await update.message.reply_text(
+        "다양한 이벤트가 진행중입니다! 아래 버튼을 눌러 확인하세요.",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 # --- 회원가입 관련 함수들 ---
 async def _perform_signup(update: Update, context: ContextTypes.DEFAULT_TYPE, recommender: str):
-    """실제 회원가입 로직을 수행하는 내부 함수"""
     user = update.effective_user
     if not user.username:
         await update.message.reply_text("가입을 위해 텔레그램 사용자명을 설정해주세요.", reply_markup=get_main_reply_keyboard())
@@ -88,22 +99,16 @@ async def _perform_signup(update: Update, context: ContextTypes.DEFAULT_TYPE, re
 
     password, payout_password = str(random.randint(100000, 999999)), str(random.randint(1000, 9999))
     user_data = {
-        "telegram_id": user.id,
-        "username": user.username,
-        "first_name": user.first_name or "사용자",
-        "password": password,
-        "payout_password": payout_password,
-        "Recommender": recommender
+        "telegram_id": user.id, "username": user.username, "first_name": user.first_name or "사용자",
+        "password": password, "payout_password": payout_password, "Recommender": recommender
     }
     try:
         response = requests.post(WEBSITE_API_URL, json=user_data)
         response.raise_for_status()
         signup_message = (
             f"🎉 가입을 환영합니다!\n\n"
-            f"• 아이디: {user.username}\n"
-            f"• 닉네임: {user.first_name or '사용자'}\n"
-            f"• 비밀번호: {password}\n"
-            f"• 출금 비밀번호: {payout_password}"
+            f"• 아이디: {user.username}\n• 닉네임: {user.first_name or '사용자'}\n"
+            f"• 비밀번호: {password}\n• 출금 비밀번호: {payout_password}"
         )
         await update.message.reply_text(signup_message, reply_markup=get_main_reply_keyboard())
     except requests.exceptions.RequestException as e:
@@ -111,33 +116,25 @@ async def _perform_signup(update: Update, context: ContextTypes.DEFAULT_TYPE, re
         await update.message.reply_text("서버 오류가 발생했습니다.", reply_markup=get_main_reply_keyboard())
 
 async def signup_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'1초 회원가입' 버튼 클릭 시 하위 메뉴를 표시합니다."""
     await update.message.reply_text("가입 코드 유무를 선택해주세요.", reply_markup=get_signup_submenu_keyboard())
 
 async def ask_for_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """'가입코드 있습니다' 버튼 클릭 시 코드 입력을 요청합니다."""
-    await update.message.reply_text(
-        "안녕하세요. 가입코드가 있으신경우 가입코드를 입력해주세요",
-        reply_markup=ReplyKeyboardRemove()
-    )
+    await update.message.reply_text("안녕하세요. 가입코드가 있으신경우 가입코드를 입력해주세요", reply_markup=ReplyKeyboardRemove())
     return ASKING_CODE
 
 async def signup_with_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """입력받은 코드로 회원가입을 진행합니다."""
     recommender_code = update.message.text
     await _perform_signup(update, context, recommender=recommender_code)
     return ConversationHandler.END
 
 async def signup_without_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'가입코드 없이 가입하기' 버튼 클릭 시 고정값으로 회원가입을 진행합니다."""
     await _perform_signup(update, context, recommender="online")
 
 async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """'메인메뉴로' 또는 가입 대화 취소 시 메인 메뉴로 복귀합니다."""
     await start(update, context)
     return ConversationHandler.END
 
-# --- 기타 기능 함수들 (이전과 동일) ---
+# --- 기타 기능 함수들 (비밀번호 변경 제외) ---
 async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     await update.message.reply_text(f"👤 회원정보\n\n• 아이디: {user.username}\n• 닉네임: {user.first_name or '사용자'}")
@@ -150,27 +147,13 @@ async def guide(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [[InlineKeyboardButton("공지채널 바로가기", url=GUIDE_URL)]]
     await update.message.reply_text("아래 버튼을 눌러 이동하세요.", reply_markup=InlineKeyboardMarkup(keyboard))
 
-OLD_PASSWORD, NEW_PASSWORD = range(2)
-async def changepw_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("현재 비밀번호를 입력하세요. (/cancel 로 취소)", reply_markup=ReplyKeyboardRemove())
-    return OLD_PASSWORD
-async def received_old_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("새 비밀번호를 입력하세요.")
-    return NEW_PASSWORD
-async def received_new_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("비밀번호 변경이 완료되었습니다!", reply_markup=get_main_reply_keyboard())
-    return ConversationHandler.END
 
 # --- 5. 봇 핸들러 등록 ---
 signup_conv_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex('^🎫 가입코드 있습니다.$'), ask_for_code)],
-    states={
-        ASKING_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, signup_with_code)],
-    },
+    states={ASKING_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, signup_with_code)],},
     fallbacks=[MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), back_to_main)],
 )
-
-pw_conv_handler = ConversationHandler(entry_points=[MessageHandler(filters.Regex('^🔒 비밀번호 변경$'), changepw_start)], states={OLD_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_old_password)], NEW_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_new_password)],}, fallbacks=[CommandHandler('cancel', back_to_main)])
 
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex('^📝 1초 회원가입$'), signup_start))
@@ -178,11 +161,12 @@ application.add_handler(MessageHandler(filters.Regex('^👤 가입코드 없이 
 application.add_handler(MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), start))
 application.add_handler(MessageHandler(filters.Regex('^🔑 사이트 바로가기$'), enter))
 application.add_handler(MessageHandler(filters.Regex('^👤 계정정보 확인$'), account))
+application.add_handler(MessageHandler(filters.Regex('^🎉 이벤트안내$'), event_info)) # 이벤트 핸들러 추가
 application.add_handler(MessageHandler(filters.Regex('^📞 고객센터$'), contact))
 application.add_handler(MessageHandler(filters.Regex('^📘 이용가이드$'), guide))
 application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, launch_and_return))
 application.add_handler(signup_conv_handler)
-application.add_handler(pw_conv_handler)
+
 
 # --- 6. 렌더에서 봇 실행을 위한 메인 함수 ---
 def main() -> None:
