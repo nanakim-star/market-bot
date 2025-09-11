@@ -84,15 +84,15 @@ async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         response = requests.post(WEBSITE_API_URL, json=user_data)
         response.raise_for_status()
-        # 아이디 옆의 `` 제거
+        # 모든 정보의 폰트를 통일하기 위해 `` 제거
         signup_message = (
             f"🎉 가입을 환영합니다!\n\n"
-            f"* 아이디: {user.username}\n"
-            f"* 닉네임: `{user.first_name or '사용자'}`\n"
-            f"* 비밀번호: `{password}`\n"
-            f"* 출금 비밀번호: `{payout_password}`"
+            f"• 아이디: {user.username}\n"
+            f"• 닉네임: {user.first_name or '사용자'}\n"
+            f"• 비밀번호: {password}\n"
+            f"• 출금 비밀번호: {payout_password}"
         )
-        await update.message.reply_text(signup_message, parse_mode='Markdown', reply_markup=get_main_reply_keyboard())
+        await update.message.reply_text(signup_message, reply_markup=get_main_reply_keyboard())
     except requests.exceptions.RequestException as e:
         logger.error(f"Request Error: {e}")
         await update.message.reply_text("서버 오류가 발생했습니다.", reply_markup=get_main_reply_keyboard())
@@ -100,14 +100,13 @@ async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """'👤 계정정보 확인' 메시지에 응답합니다."""
     user = update.effective_user
-    # 아이디 옆의 `` 제거
     account_info = (
         f"👤 회원정보\n\n"
         f"• 아이디: {user.username}\n"
-        f"• 닉네임: `{user.first_name or '사용자'}`\n\n"
+        f"• 닉네임: {user.first_name or '사용자'}\n\n"
         "비밀번호 관련 사항은 '비밀번호 변경' 메뉴를 이용해주세요."
     )
-    await update.message.reply_text(account_info, parse_mode='Markdown')
+    await update.message.reply_text(account_info)
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [[InlineKeyboardButton("고객센터 문의하기", url=CONTACT_URL)]]
