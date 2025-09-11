@@ -48,9 +48,9 @@ def get_main_reply_keyboard():
 def get_signup_submenu_keyboard():
     """회원가입 하위 메뉴 키보드를 생성합니다."""
     keyboard = [
-        [KeyboardButton("a. 가입코드 있습니다.")],
-        [KeyboardButton("b. 가입코드 없습니다.")],
-        [KeyboardButton("c. 메인메뉴로")],
+        [KeyboardButton("🎫 가입코드 있습니다.")],
+        [KeyboardButton("👤 가입코드 없이 가입하기")],
+        [KeyboardButton("↩️ 메인 메뉴로")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
@@ -129,7 +129,7 @@ async def signup_with_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return ConversationHandler.END
 
 async def signup_without_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'가입코드 없습니다' 버튼 클릭 시 고정값으로 회원가입을 진행합니다."""
+    """'가입코드 없이 가입하기' 버튼 클릭 시 고정값으로 회원가입을 진행합니다."""
     await _perform_signup(update, context, recommender="online")
 
 async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -163,24 +163,23 @@ async def received_new_password(update: Update, context: ContextTypes.DEFAULT_TY
 
 # --- 5. 봇 핸들러 등록 ---
 signup_conv_handler = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex('^a. 가입코드 있습니다.$'), ask_for_code)],
+    entry_points=[MessageHandler(filters.Regex('^🎫 가입코드 있습니다.$'), ask_for_code)],
     states={
         ASKING_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, signup_with_code)],
     },
-    fallbacks=[MessageHandler(filters.Regex('^c. 메인메뉴로$'), back_to_main)],
+    fallbacks=[MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), back_to_main)],
 )
 
 pw_conv_handler = ConversationHandler(entry_points=[MessageHandler(filters.Regex('^🔒 비밀번호 변경$'), changepw_start)], states={OLD_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_old_password)], NEW_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_new_password)],}, fallbacks=[CommandHandler('cancel', back_to_main)])
 
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex('^📝 1초 회원가입$'), signup_start))
-application.add_handler(MessageHandler(filters.Regex('^b. 가입코드 없습니다.$'), signup_without_code))
-application.add_handler(MessageHandler(filters.Regex('^c. 메인메뉴로$'), start))
+application.add_handler(MessageHandler(filters.Regex('^👤 가입코드 없이 가입하기$'), signup_without_code))
+application.add_handler(MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), start))
 application.add_handler(MessageHandler(filters.Regex('^🔑 사이트 바로가기$'), enter))
 application.add_handler(MessageHandler(filters.Regex('^👤 계정정보 확인$'), account))
 application.add_handler(MessageHandler(filters.Regex('^📞 고객센터$'), contact))
 application.add_handler(MessageHandler(filters.Regex('^📘 이용가이드$'), guide))
-application.add_handler(MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), start))
 application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, launch_and_return))
 application.add_handler(signup_conv_handler)
 application.add_handler(pw_conv_handler)
