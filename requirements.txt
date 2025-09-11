@@ -1,5 +1,3 @@
 python-telegram-bot[webhooks]
 requests
 python-dotenv
-Flask[async]
-gunicorn
