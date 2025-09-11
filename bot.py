@@ -47,20 +47,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # --- 'enter' 함수 변경 ---
 async def enter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'🔑 사이트 바로가기'를 누르면 일회용 미니앱 실행 버튼을 보냅니다."""
+    """'🔑 사이트 바로가기'를 누르면 미니앱 실행 버튼을 보낸 뒤, 메인 메뉴로 복귀시킵니다."""
     if not MINI_APP_URL:
         await update.message.reply_text("오류: 미니앱 주소가 설정되지 않았습니다.")
         return
     
-    # 일회용 키보드(one_time_keyboard=True)로 미니앱 실행 버튼을 보냅니다.
-    # 사용자가 이 버튼을 누르면 이 키보드는 사라지고, 원래 메뉴가 보이게 됩니다.
+    # 1. 미니앱을 실행할 수 있는 임시 키보드를 보냅니다.
     keyboard = [[KeyboardButton(
-        "🚀 미니앱 실행하기", 
+        "🚀 사이트 접속하기 (미니앱)",  # 1. 버튼 텍스트 변경
         web_app=WebAppInfo(url=MINI_APP_URL)
     )]]
     await update.message.reply_text(
         "아래 버튼을 눌러 미니앱을 실행하세요.",
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    )
+    
+    # 2. 바로 이어서 메인 메뉴 키보드를 다시 보내서 복귀시킵니다.
+    await update.message.reply_text(
+        "메인 메뉴로 돌아왔습니다.",
+        reply_markup=get_main_reply_keyboard()
     )
 
 # --- 나머지 함수들은 이전과 동일 ---
