@@ -36,7 +36,7 @@ application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 def get_main_reply_keyboard():
     """화면 하단에 항상 떠 있는 메인 메뉴 키보드를 생성합니다."""
     keyboard = [
-        [KeyboardButton("📝 1초 가입하기"), KeyboardButton("🔑 사이트 바로가기")],
+        [KeyboardButton("📝 1초 회원가입"), KeyboardButton("🔑 사이트 바로가기")],
         [KeyboardButton("👤 계정정보 확인"), KeyboardButton("🔒 비밀번호 변경")],
         [KeyboardButton("📞 고객센터"), KeyboardButton("📘 이용가이드")],
     ]
@@ -54,7 +54,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """/start 또는 '메인 메뉴로' 버튼을 누르면 메인 메뉴를 표시합니다."""
     await update.message.reply_text("마켓 봇에 오신 것을 환영합니다!", reply_markup=get_main_reply_keyboard())
 
-# --- 'enter' 함수 변경 ---
 async def enter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """'🔑 사이트 바로가기'를 누르면 하위 메뉴를 표시합니다."""
     if not MINI_APP_URL:
@@ -66,18 +65,16 @@ async def enter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=get_submenu_keyboard()
     )
 
-# --- 미니앱 버튼을 눌렀을 때 메인 메뉴로 돌아가게 하는 핸들러 ---
 async def launch_and_return(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """미니앱 버튼이 눌렸다는 것을 감지하고 메인 메뉴로 복귀시킵니다."""
-    # web_app_data가 있으면 미니앱 버튼이 눌린 것으로 간주
     if update.message.web_app_data:
         await update.message.reply_text(
             "메인 메뉴로 돌아왔습니다.",
             reply_markup=get_main_reply_keyboard()
         )
 
-# --- 나머지 함수들은 이전과 동일 ---
 async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """'📝 1초 회원가입' 메시지에 응답합니다."""
     user = update.effective_user
     if not user.username:
         await update.message.reply_text("가입을 위해 텔레그램 사용자명을 설정해주세요.")
@@ -87,14 +84,30 @@ async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         response = requests.post(WEBSITE_API_URL, json=user_data)
         response.raise_for_status()
-        await update.message.reply_text(f"🎉 가입을 환영합니다!\n\n* 아이디: `{user.username}`\n* 닉네임: `{user.first_name or '사용자'}`\n* 비밀번호: `{password}`\n* 출금 비밀번호: `{payout_password}`", parse_mode='Markdown', reply_markup=get_main_reply_keyboard())
+        # 아이디 옆의 `` 제거
+        signup_message = (
+            f"🎉 가입을 환영합니다!\n\n"
+            f"* 아이디: {user.username}\n"
+            f"* 닉네임: `{user.first_name or '사용자'}`\n"
+            f"* 비밀번호: `{password}`\n"
+            f"* 출금 비밀번호: `{payout_password}`"
+        )
+        await update.message.reply_text(signup_message, parse_mode='Markdown', reply_markup=get_main_reply_keyboard())
     except requests.exceptions.RequestException as e:
         logger.error(f"Request Error: {e}")
         await update.message.reply_text("서버 오류가 발생했습니다.", reply_markup=get_main_reply_keyboard())
 
 async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """'👤 계정정보 확인' 메시지에 응답합니다."""
     user = update.effective_user
-    await update.message.reply_text(f"👤 회원정보\n\n* 아이디: `{user.username}`\n* 닉네임: `{user.first_name or '사용자'}`", parse_mode='Markdown')
+    # 아이디 옆의 `` 제거
+    account_info = (
+        f"👤 회원정보\n\n"
+        f"• 아이디: {user.username}\n"
+        f"• 닉네임: `{user.first_name or '사용자'}`\n\n"
+        "비밀번호 관련 사항은 '비밀번호 변경' 메뉴를 이용해주세요."
+    )
+    await update.message.reply_text(account_info, parse_mode='Markdown')
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [[InlineKeyboardButton("고객센터 문의하기", url=CONTACT_URL)]]
@@ -121,13 +134,13 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # --- 4. 봇 핸들러 등록 ---
 conv_handler = ConversationHandler(entry_points=[MessageHandler(filters.Regex('^🔒 비밀번호 변경$'), changepw_start)], states={OLD_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_old_password)], NEW_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_new_password)],}, fallbacks=[CommandHandler('cancel', cancel)])
 application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.Regex('^📝 1초 가입하기$'), signup))
+application.add_handler(MessageHandler(filters.Regex('^📝 1초 회원가입$'), signup))
 application.add_handler(MessageHandler(filters.Regex('^🔑 사이트 바로가기$'), enter))
 application.add_handler(MessageHandler(filters.Regex('^👤 계정정보 확인$'), account))
 application.add_handler(MessageHandler(filters.Regex('^📞 고객센터$'), contact))
 application.add_handler(MessageHandler(filters.Regex('^📘 이용가이드$'), guide))
-application.add_handler(MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), start)) # '메인 메뉴로' 버튼 핸들러
-application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, launch_and_return)) # 미니앱 버튼 클릭 감지 핸들러
+application.add_handler(MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), start))
+application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, launch_and_return))
 application.add_handler(conv_handler)
 
 # --- 5. 렌더에서 봇 실행을 위한 메인 함수 ---
