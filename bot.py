@@ -42,31 +42,39 @@ def get_main_reply_keyboard():
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+def get_submenu_keyboard():
+    """사이트 접속을 위한 하위 메뉴 키보드를 생성합니다."""
+    keyboard = [
+        [KeyboardButton("🚀 사이트 접속하기 (미니앱)", web_app=WebAppInfo(url=MINI_APP_URL))],
+        [KeyboardButton("↩️ 메인 메뉴로")],
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/start 또는 '메인 메뉴로' 버튼을 누르면 메인 메뉴를 표시합니다."""
     await update.message.reply_text("마켓 봇에 오신 것을 환영합니다!", reply_markup=get_main_reply_keyboard())
 
 # --- 'enter' 함수 변경 ---
 async def enter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'🔑 사이트 바로가기'를 누르면 미니앱 실행 버튼을 보낸 뒤, 메인 메뉴로 복귀시킵니다."""
+    """'🔑 사이트 바로가기'를 누르면 하위 메뉴를 표시합니다."""
     if not MINI_APP_URL:
         await update.message.reply_text("오류: 미니앱 주소가 설정되지 않았습니다.")
         return
     
-    # 1. 미니앱을 실행할 수 있는 임시 키보드를 보냅니다.
-    keyboard = [[KeyboardButton(
-        "🚀 사이트 접속하기 (미니앱)",  # 1. 버튼 텍스트 변경
-        web_app=WebAppInfo(url=MINI_APP_URL)
-    )]]
     await update.message.reply_text(
-        "아래 버튼을 눌러 미니앱을 실행하세요.",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        "사이트 접속 메뉴입니다.",
+        reply_markup=get_submenu_keyboard()
     )
-    
-    # 2. 바로 이어서 메인 메뉴 키보드를 다시 보내서 복귀시킵니다.
-    await update.message.reply_text(
-        "메인 메뉴로 돌아왔습니다.",
-        reply_markup=get_main_reply_keyboard()
-    )
+
+# --- 미니앱 버튼을 눌렀을 때 메인 메뉴로 돌아가게 하는 핸들러 ---
+async def launch_and_return(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """미니앱 버튼이 눌렸다는 것을 감지하고 메인 메뉴로 복귀시킵니다."""
+    # web_app_data가 있으면 미니앱 버튼이 눌린 것으로 간주
+    if update.message.web_app_data:
+        await update.message.reply_text(
+            "메인 메뉴로 돌아왔습니다.",
+            reply_markup=get_main_reply_keyboard()
+        )
 
 # --- 나머지 함수들은 이전과 동일 ---
 async def signup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -118,6 +126,8 @@ application.add_handler(MessageHandler(filters.Regex('^🔑 사이트 바로가�
 application.add_handler(MessageHandler(filters.Regex('^👤 계정정보 확인$'), account))
 application.add_handler(MessageHandler(filters.Regex('^📞 고객센터$'), contact))
 application.add_handler(MessageHandler(filters.Regex('^📘 이용가이드$'), guide))
+application.add_handler(MessageHandler(filters.Regex('^↩️ 메인 메뉴로$'), start)) # '메인 메뉴로' 버튼 핸들러
+application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, launch_and_return)) # 미니앱 버튼 클릭 감지 핸들러
 application.add_handler(conv_handler)
 
 # --- 5. 렌더에서 봇 실행을 위한 메인 함수 ---
